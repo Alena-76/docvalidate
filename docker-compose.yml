@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: docvalidate-db
+    environment:
+      POSTGRES_DB: docvalidate
+      POSTGRES_USER: docvalidate
+      POSTGRES_PASSWORD: docvalidate123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # MailHog: fake SMTP server — catches all emails and shows them in a web UI
+  # Useful when you add email notifications later
+  mailhog:
+    image: mailhog/mailhog
+    container_name: docvalidate-mail
+    ports:
+      - "1025:1025"  # SMTP port
+      - "8025:8025"  # Web UI: http://localhost:8025
+
+volumes:
+  postgres_data:
