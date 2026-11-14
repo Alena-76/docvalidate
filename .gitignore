@@ -6,3 +6,6 @@ out/
 *.iml
 
 *.log
+
+# Uploaded document files (app.upload.dir)
+uploads/
