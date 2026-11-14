@@ -3,6 +3,7 @@ package com.bank.docvalidate
 import com.bank.docvalidate.dto.ReviewDecision
 import com.bank.docvalidate.dto.ReviewDecisionRequest
 import com.bank.docvalidate.entity.Document
+import com.bank.docvalidate.entity.DocumentAuditLog
 import com.bank.docvalidate.entity.User
 import com.bank.docvalidate.enums.DocumentStatus
 import com.bank.docvalidate.enums.DocumentType
@@ -19,6 +20,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.mockito.kotlin.*
+import org.springframework.core.io.Resource
 import org.springframework.security.core.Authentication
 import org.springframework.security.core.context.SecurityContext
 import org.springframework.security.core.context.SecurityContextHolder
@@ -73,8 +75,8 @@ class DocumentServiceTest {
         // ARRANGE: set up the document in the correct state
         val doc = buildDocument(DocumentStatus.PENDING_SECOND_LEVEL)
         whenever(documentRepository.findById(1L)).thenReturn(Optional.of(doc))
-        whenever(documentRepository.save(any())).thenAnswer { it.arguments[0] }
-        whenever(auditLogRepository.save(any())).thenAnswer { it.arguments[0] }
+        doAnswer { it.arguments[0] }.whenever(documentRepository).save(any<Document>())
+        doAnswer { it.arguments[0] }.whenever(auditLogRepository).save(any<DocumentAuditLog>())
 
         // ACT
         val result = documentService.claimDocument(1L)
@@ -118,14 +120,29 @@ class DocumentServiceTest {
         val doc = buildDocument(DocumentStatus.UNDER_REVIEW)
         doc.assignedReviewer = testReviewer
         whenever(documentRepository.findById(1L)).thenReturn(Optional.of(doc))
-        whenever(documentRepository.save(any())).thenAnswer { it.arguments[0] }
-        whenever(auditLogRepository.save(any())).thenAnswer { it.arguments[0] }
+        doAnswer { it.arguments[0] }.whenever(documentRepository).save(any<Document>())
+        doAnswer { it.arguments[0] }.whenever(auditLogRepository).save(any<DocumentAuditLog>())
 
         val request = ReviewDecisionRequest(decision = ReviewDecision.APPROVE, notes = "Looks good")
         val result = documentService.submitDecision(1L, request)
 
         assertEquals(DocumentStatus.APPROVED, result.status)
         assertNotNull(result.completedAt)
+    }
+
+    @Test
+    fun `loadDocumentFile should look up the file by its stored name`() {
+        val doc = buildDocument(DocumentStatus.APPROVED)
+        val resource: Resource = mock()
+        whenever(documentRepository.findById(1L)).thenReturn(Optional.of(doc))
+        whenever(fileStorageService.loadAsResource("uuid-id.pdf")).thenReturn(resource)
+
+        val result = documentService.loadDocumentFile(1L)
+
+        assertSame(resource, result.resource)
+        assertEquals("id.pdf", result.originalFileName)  // still offered to the client under its original name
+        verify(fileStorageService).loadAsResource("uuid-id.pdf")
+        verify(fileStorageService, never()).loadAsResource("id.pdf")
     }
 
     // ─── Helpers ───────────────────────────────────────────────────────────

@@ -10,6 +10,7 @@ import com.bank.docvalidate.repository.DocumentAuditLogRepository
 import com.bank.docvalidate.repository.DocumentRepository
 import com.bank.docvalidate.repository.UserRepository
 import com.bank.docvalidate.security.UserDetailsImpl
+import org.springframework.core.io.Resource
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.security.access.prepost.PreAuthorize
@@ -89,6 +90,23 @@ class DocumentService(
     @Transactional(readOnly = true)
     fun getDocumentById(id: Long): DocumentResponse =
         DocumentResponse.from(findDocumentOrThrow(id))
+
+    /**
+     * Loads the uploaded file for a document.
+     *
+     * Files are saved on disk under a UUID-based storedFileName (see FileStorageService),
+     * so the lookup must use that name; originalFileName is only used for the
+     * Content-Disposition header. storedFileName is not part of DocumentResponse,
+     * which is why this lives in the service rather than the controller.
+     */
+    @Transactional(readOnly = true)
+    fun loadDocumentFile(id: Long): DocumentFile {
+        val doc = findDocumentOrThrow(id)
+        return DocumentFile(
+            resource = fileStorageService.loadAsResource(doc.storedFileName),
+            originalFileName = doc.originalFileName
+        )
+    }
 
     // ─── Workflow Actions ───────────────────────────────────────────────────
 
@@ -236,3 +254,9 @@ class DocumentService(
         auditLogRepository.save(log)
     }
 }
+
+/** The file behind a document, plus the name to offer the client when downloading. */
+data class DocumentFile(
+    val resource: Resource,
+    val originalFileName: String
+)

@@ -2,7 +2,6 @@ package com.bank.docvalidate.controller
 
 import com.bank.docvalidate.dto.*
 import com.bank.docvalidate.service.DocumentService
-import com.bank.docvalidate.service.FileStorageService
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
@@ -34,8 +33,7 @@ import org.springframework.web.multipart.MultipartFile
 @Tag(name = "Documents", description = "Document submission and review workflow")
 @SecurityRequirement(name = "bearerAuth")
 class DocumentController(
-    private val documentService: DocumentService,
-    private val fileStorageService: FileStorageService
+    private val documentService: DocumentService
 ) {
 
     // ─── Submit ────────────────────────────────────────────────────────────
@@ -66,12 +64,11 @@ class DocumentController(
     @GetMapping("/{id}/file")
     @Operation(summary = "Download the actual document file")
     fun downloadFile(@PathVariable id: Long): ResponseEntity<org.springframework.core.io.Resource> {
-        val doc = documentService.getDocumentById(id)
-        val resource = fileStorageService.loadAsResource(doc.originalFileName)
+        val file = documentService.loadDocumentFile(id)
         return ResponseEntity.ok()
-            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"${doc.originalFileName}\"")
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"${file.originalFileName}\"")
             .contentType(MediaType.APPLICATION_OCTET_STREAM)
-            .body(resource)
+            .body(file.resource)
     }
 
     // ─── Queue & Lists ──────────────────────────────────────────────────────
